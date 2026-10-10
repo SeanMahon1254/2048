@@ -1,0 +1,537 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#191638">
+<title>2048 — Neon Pop</title>
+<style>
+:root{
+  --bg:#191638;
+  --panel:#29254a;
+  --accent:#ffdd57;
+  --text:#fff;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  margin:0;min-height:100dvh;
+  background:radial-gradient(ellipse at 50% 15%,#39316c,#191638 75%);
+  color:var(--text);
+  font-family:system-ui,-apple-system,Arial,sans-serif;
+  display:flex;justify-content:center;align-items:center;
+  overflow-x:hidden;
+}
+button,input{font:inherit}
+button{cursor:pointer;touch-action:manipulation}
+button:active{transform:scale(.95)}
+.app{width:min(100%,440px);padding:18px;text-align:center}
+.screen{display:none}
+.screen.active{display:block;animation:appear .35s ease}
+@keyframes appear{
+  from{opacity:0;transform:translateY(14px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.logo{
+  font-size:clamp(70px,19vw,100px);
+  font-weight:1000;letter-spacing:-8px;line-height:1;
+  color:#ffdd57;text-shadow:5px 6px 0 #f36f7c;
+  margin:15px 0;
+}
+.subtitle{color:#c7c0ee;font-size:15px;letter-spacing:2px}
+.mascot{font-size:70px;margin:20px;animation:float 3s infinite ease-in-out}
+@keyframes float{50%{transform:translateY(-12px) rotate(8deg)}}
+.panel{
+  background:var(--panel);border:2px solid #494274;
+  border-radius:24px;padding:28px 22px;
+  box-shadow:0 15px 35px #09071d60;
+}
+h2{margin:0 0 16px}
+input{
+  width:100%;border:2px solid #5b5485;outline:none;
+  background:#17152e;color:white;
+  padding:16px;border-radius:14px;
+  text-align:center;font-size:18px;
+}
+input:focus{border-color:#ffdd57}
+.primary{
+  display:block;width:100%;border:0;border-radius:16px;
+  padding:17px;background:#ffdd57;color:#282038;
+  font-size:20px;font-weight:900;margin-top:16px;
+  box-shadow:0 6px 0 #dc9d34;
+}
+.primary:active{box-shadow:0 2px 0 #dc9d34;transform:translateY(4px)}
+.hint{font-size:13px;color:#b7aedb;line-height:1.6}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.brand{font-size:37px;font-weight:1000;color:#ffdd57;letter-spacing:-2px}
+.smallBtn{
+  border:1px solid #625b8b;background:#363057;
+  color:white;border-radius:12px;padding:10px 13px;font-weight:bold;
+}
+.player{color:#d7cffc;font-size:14px;margin:12px 0 15px}
+.scores{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:17px}
+.scoreBox{
+  border-radius:15px;background:#302a55;padding:12px;
+  border:1px solid #524a81;
+}
+.scoreBox span{display:block;color:#bcb4e8;font-size:11px;letter-spacing:2px;font-weight:800}
+.scoreBox strong{display:block;font-size:28px;margin-top:2px}
+.boardWrap{
+  position:relative;
+  background:#3c355f;
+  padding:9px;border-radius:19px;
+  box-shadow:0 10px 0 #16132d,0 20px 30px #07051650;
+  touch-action:none;
+  user-select:none;-webkit-user-select:none;
+}
+.board{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.cell{
+  aspect-ratio:1;border-radius:11px;background:#514970;
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(20px,7vw,35px);font-weight:950;
+  font-variant-numeric:tabular-nums;
+  transition:background .13s,transform .13s;
+}
+.cell[data-v="0"]{color:transparent}
+.cell[data-v="2"]{background:#6be7d4;color:#173f45}
+.cell[data-v="4"]{background:#80bbff;color:#183755}
+.cell[data-v="8"]{background:#ffcb73;color:#573819}
+.cell[data-v="16"]{background:#ff9a88;color:#5c2632}
+.cell[data-v="32"]{background:#ff77af;color:#571c46}
+.cell[data-v="64"]{background:#dd86ff;color:#3e2059}
+.cell[data-v="128"]{background:#aa8dff;color:#fff}
+.cell[data-v="256"]{background:#827aff;color:#fff}
+.cell[data-v="512"]{background:#5b6ff5;color:#fff}
+.cell[data-v="1024"]{background:#ffcc37;color:#482f12;font-size:clamp(17px,5vw,27px)}
+.cell[data-v="2048"]{background:#ffeb68;color:#492c12;font-size:clamp(17px,5vw,27px)}
+.cell[data-v="4096"],.cell[data-v="8192"]{background:#f75d99;color:white;font-size:23px}
+.cell.pop{animation:pop .2s ease-out}
+@keyframes pop{
+  0%{transform:scale(.84)}
+  65%{transform:scale(1.10)}
+  100%{transform:scale(1)}
+}
+.boardWrap.bump{animation:bump .17s}
+@keyframes bump{50%{transform:scale(.985)}}
+.status{
+  display:flex;justify-content:space-between;
+  color:#c6bfea;font-size:12px;margin:24px 2px 6px;
+}
+.progress{
+  height:8px;background:#373153;border-radius:20px;overflow:hidden;
+}
+.progress>div{
+  width:0;height:100%;background:linear-gradient(90deg,#74e6d7,#ffdd57);
+  transition:width .25s;
+}
+.controls{
+  display:grid;grid-template-columns:repeat(3,62px);
+  justify-content:center;gap:7px;margin:19px auto 10px;
+}
+.arrow{
+  height:48px;border:1px solid #685e99;border-radius:13px;
+  background:#39335e;color:#fff;font-size:23px;font-weight:bold;
+}
+.arrow.up{grid-column:2}
+.arrow.left{grid-column:1;grid-row:2}
+.arrow.down{grid-column:2;grid-row:2}
+.arrow.right{grid-column:3;grid-row:2}
+.footer{font-size:11px;color:#867dac;margin:13px}
+.overlay{
+  position:absolute;inset:0;border-radius:19px;
+  background:#17142de8;display:none;
+  flex-direction:column;align-items:center;justify-content:center;
+  padding:23px;z-index:3;backdrop-filter:blur(5px);
+}
+.overlay.show{display:flex;animation:appear .3s}
+.overlay h2{font-size:31px;color:#ffdd57}
+.overlay p{color:#e0dcf5}
+.overlay .primary{max-width:230px}
+.confetti{
+  position:fixed;pointer-events:none;z-index:20;
+  width:9px;height:13px;border-radius:2px;
+  animation:fall 1s ease-out forwards;
+}
+@keyframes fall{
+  to{transform:translate(var(--dx),var(--dy)) rotate(800deg);opacity:0}
+}
+@media(max-height:740px){
+  .app{padding:10px 16px}
+  .player{margin:4px 0 8px}
+  .scores{margin-bottom:10px}
+  .scoreBox{padding:7px}
+  .status{margin-top:17px}
+  .controls{margin-top:12px}
+  .arrow{height:40px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <section id="home" class="screen active">
+    <div class="subtitle">THE ULTIMATE NUMBER PUZZLE</div>
+    <div class="logo">2048</div>
+    <div class="mascot">✦ ◈ ✦</div>
+    <div class="panel">
+      <h2>Ready to get addicted?</h2>
+      <p class="hint">Slide. Merge. Score.<br>Reach 2048 and become a legend!</p>
+      <input id="nameInput" maxlength="18" placeholder="Enter your first name" autocomplete="given-name">
+      <button class="primary" id="startBtn">LET'S PLAY ▶</button>
+      <p class="hint">No account needed. Your best score stays on this device.</p>
+    </div>
+  </section>
+
+  <section id="game" class="screen">
+    <div class="topbar">
+      <div class="brand">2048 ✦</div>
+      <button class="smallBtn" id="soundBtn">♫ ON</button>
+      <button class="smallBtn" id="restartBtn">↻ New</button>
+    </div>
+    <div class="player" id="greeting">You got this!</div>
+    <div class="scores">
+      <div class="scoreBox"><span>SCORE</span><strong id="score">0</strong></div>
+      <div class="scoreBox"><span>PERSONAL BEST</span><strong id="best">0</strong></div>
+    </div>
+
+    <div class="boardWrap" id="boardWrap">
+      <div class="board" id="board"></div>
+      <div class="overlay" id="overlay">
+        <div style="font-size:48px" id="endIcon">★</div>
+        <h2 id="endTitle">Game Over!</h2>
+        <p id="endText">Nice try!</p>
+        <button class="primary" id="againBtn">PLAY AGAIN ↻</button>
+        <button class="smallBtn" id="menuBtn" style="margin-top:18px">Main Menu</button>
+      </div>
+    </div>
+
+    <div class="status">
+      <span id="levelLabel">LEVEL 1 · CHILL MODE</span>
+      <span id="targetLabel">Next: 128</span>
+    </div>
+    <div class="progress"><div id="progressFill"></div></div>
+
+    <div class="controls">
+      <button class="arrow up" data-dir="up" aria-label="Up">▲</button>
+      <button class="arrow left" data-dir="left" aria-label="Left">◀</button>
+      <button class="arrow down" data-dir="down" aria-label="Down">▼</button>
+      <button class="arrow right" data-dir="right" aria-label="Right">▶</button>
+    </div>
+    <div class="hint">Swipe the board, tap arrows, or use keyboard keys.</div>
+    <div class="footer">NEON POP EDITION · MADE FOR FUN</div>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+
+const $ = id => document.getElementById(id);
+const SIZE = 4;
+let grid, score = 0, best = 0, moves = 0;
+let player = "Player", ended = false, soundOn = true;
+let audioCtx = null, busy = false, won = false;
+let lastValues = Array(16).fill(0);
+
+function storageGet(key, fallback) {
+  try { return localStorage.getItem(key) ?? fallback; }
+  catch { return fallback; }
+}
+function storageSet(key, value) {
+  try { localStorage.setItem(key, String(value)); } catch {}
+}
+
+best = Number(storageGet("neon2048best", "0")) || 0;
+$("nameInput").value = storageGet("neon2048name", "");
+
+function initAudio() {
+  if (!soundOn) return;
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch {}
+}
+
+function tone(freq = 440, duration = .09, type = "sine", volume = .055) {
+  if (!soundOn || !audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const now = audioCtx.currentTime;
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(.001, now + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + duration);
+  } catch {}
+}
+
+function playMerge() {
+  tone(490, .12, "sine");
+  setTimeout(() => tone(740, .13, "sine"), 65);
+}
+function celebrate() {
+  for (let i = 0; i < 45; i++) {
+    const p = document.createElement("div");
+    p.className = "confetti";
+    p.style.left = (20 + Math.random() * 60) + "vw";
+    p.style.top = (15 + Math.random() * 30) + "vh";
+    p.style.background = ["#ffdd57","#ff77af","#6be7d4","#aa8dff"][i % 4];
+    p.style.setProperty("--dx", (Math.random() * 400 - 200) + "px");
+    p.style.setProperty("--dy", (Math.random() * 430 + 100) + "px");
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1100);
+  }
+}
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(el => el.classList.remove("active"));
+  $(id).classList.add("active");
+}
+
+function startGame() {
+  initAudio();
+  player = $("nameInput").value.trim().slice(0,18) || "Player";
+  storageSet("neon2048name", player);
+  grid = Array.from({length:4},() => Array(4).fill(0));
+  score = 0;
+  moves = 0;
+  won = false;
+  ended = false;
+  busy = false;
+  lastValues = Array(16).fill(0);
+  $("overlay").classList.remove("show");
+  $("greeting").textContent = "✨ " + player + "'s adventure";
+  spawn();
+  spawn();
+  showScreen("game");
+  render();
+  tone(540,.12);
+  setTimeout(() => tone(790,.16),100);
+}
+
+function emptyCells() {
+  const out = [];
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE; c++)
+      if (!grid[r][c]) out.push([r,c]);
+  return out;
+}
+
+function difficulty() {
+  return Math.min(5, Math.floor(score / 1200) + 1);
+}
+
+function spawn() {
+  const empty = emptyCells();
+  if (!empty.length) return;
+  const [r,c] = empty[Math.floor(Math.random() * empty.length)];
+  const chance4 = Math.min(.1 + (difficulty()-1)*.09, .46);
+  grid[r][c] = Math.random() < chance4 ? 4 : 2;
+}
+
+function slideLine(line) {
+  let nums = line.filter(n => n !== 0);
+  let output = [], gained = 0, merged = false;
+  for (let i = 0; i < nums.length; i++) {
+    if (i+1 < nums.length && nums[i] === nums[i+1]) {
+      const v = nums[i] * 2;
+      output.push(v);
+      gained += v;
+      merged = true;
+      i++;
+    } else output.push(nums[i]);
+  }
+  while (output.length < 4) output.push(0);
+  return {output,gained,merged};
+}
+
+function move(dir) {
+  if (ended || busy || !grid) return;
+  const previous = grid.map(row => [...row]);
+  let gained = 0, merged = false;
+  const next = Array.from({length:4},()=>Array(4).fill(0));
+
+  for (let i=0; i<4; i++) {
+    let coords = [];
+    for (let j=0; j<4; j++) {
+      if (dir==="left") coords.push([i,j]);
+      if (dir==="right") coords.push([i,3-j]);
+      if (dir==="up") coords.push([j,i]);
+      if (dir==="down") coords.push([3-j,i]);
+    }
+    const line = coords.map(([r,c])=>previous[r][c]);
+    const result = slideLine(line);
+    gained += result.gained;
+    merged ||= result.merged;
+    coords.forEach(([r,c],j) => next[r][c]=result.output[j]);
+  }
+
+  const changed = next.some((row,r)=>row.some((v,c)=>v!==previous[r][c]));
+  if (!changed) {
+    $("boardWrap").classList.remove("bump");
+    void $("boardWrap").offsetWidth;
+    $("boardWrap").classList.add("bump");
+    tone(175,.06,"triangle",.025);
+    return;
+  }
+
+  busy = true;
+  grid = next;
+  score += gained;
+  moves++;
+
+  if (score > best) {
+    best = score;
+    storageSet("neon2048best",best);
+  }
+
+  if (merged) playMerge();
+  else tone(300,.055,"sine",.025);
+
+  // Difficulty increases through the chance of spawning 4 tiles.
+  // At level 4+, an occasional second tile adds extra pressure.
+  spawn();
+  if (difficulty()>=4 && Math.random()<.13) spawn();
+
+  render();
+
+  if (!won && grid.some(row=>row.includes(2048))) {
+    won = true;
+    celebrate();
+    tone(880,.25);
+    // Reaching 2048 is celebrated, but play continues.
+    $("greeting").textContent = "🏆 " + player + " reached 2048! Keep going!";
+  }
+
+  if (!canMove()) {
+    setTimeout(() => finishGame(), 300);
+  }
+  setTimeout(()=>{busy=false},140);
+}
+
+function canMove() {
+  if (emptyCells().length) return true;
+  for (let r=0;r<4;r++)
+    for (let c=0;c<4;c++) {
+      if (r<3 && grid[r][c]===grid[r+1][c]) return true;
+      if (c<3 && grid[r][c]===grid[r][c+1]) return true;
+    }
+  return false;
+}
+
+function render() {
+  const board = $("board");
+  if (!board.children.length) {
+    for (let i=0;i<16;i++) {
+      const cell = document.createElement("div");
+      cell.className="cell";
+      board.appendChild(cell);
+    }
+  }
+  let index=0, highest=2;
+  for (let r=0;r<4;r++) {
+    for (let c=0;c<4;c++) {
+      const val=grid[r][c];
+      const cell=board.children[index];
+      cell.dataset.v=val;
+      cell.textContent=val || "";
+      if (val!==lastValues[index] && val!==0) {
+        cell.classList.remove("pop");
+        void cell.offsetWidth;
+        cell.classList.add("pop");
+      }
+      lastValues[index]=val;
+      highest=Math.max(highest,val);
+      index++;
+    }
+  }
+  $("score").textContent=score.toLocaleString();
+  $("best").textContent=best.toLocaleString();
+
+  const level=difficulty();
+  const labels=["CHILL MODE","WARMING UP","GETTING SPICY","CHAOS MODE","LEGENDARY"];
+  $("levelLabel").textContent="LEVEL "+level+" · "+labels[level-1];
+  const target=Math.min(highest*2,16384);
+  $("targetLabel").textContent="Next: "+target;
+  const pct=Math.min(100,(Math.log2(highest)/Math.log2(2048))*100);
+  $("progressFill").style.width=pct+"%";
+}
+
+function finishGame() {
+  ended=true;
+  busy=false;
+  $("endIcon").textContent=score>=best && score>0 ? "🏆" : "✦";
+  $("endTitle").textContent="Game Over!";
+  $("endText").textContent=player+", you scored "+score.toLocaleString()+" points!"+
+    (score>=best && score>0 ? " New personal best!" : " Give it another go!");
+  $("overlay").classList.add("show");
+  tone(300,.22,"triangle");
+  setTimeout(()=>tone(190,.32,"triangle"),160);
+}
+
+$("startBtn").addEventListener("click",startGame);
+$("nameInput").addEventListener("keydown",e=>{
+  if(e.key==="Enter")startGame();
+});
+$("againBtn").addEventListener("click",startGame);
+$("restartBtn").addEventListener("click",startGame);
+$("menuBtn").addEventListener("click",()=>{
+  $("overlay").classList.remove("show");
+  showScreen("home");
+});
+$("soundBtn").addEventListener("click",()=>{
+  soundOn=!soundOn;
+  $("soundBtn").textContent=soundOn?"♫ ON":"♫ OFF";
+  if(soundOn){initAudio();tone(660,.1)}
+});
+
+document.querySelectorAll("[data-dir]").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    initAudio();
+    move(btn.dataset.dir);
+  });
+});
+
+document.addEventListener("keydown",e=>{
+  if(!$("game").classList.contains("active"))return;
+  const keys={
+    ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right",
+    w:"up",s:"down",a:"left",d:"right"
+  };
+  const dir=keys[e.key];
+  if(dir){
+    e.preventDefault();
+    initAudio();
+    move(dir);
+  }
+});
+
+let touchStart=null;
+const wrap=$("boardWrap");
+wrap.addEventListener("pointerdown",e=>{
+  if(ended)return;
+  initAudio();
+  touchStart={x:e.clientX,y:e.clientY};
+});
+wrap.addEventListener("pointerup",e=>{
+  if(!touchStart)return;
+  const dx=e.clientX-touchStart.x;
+  const dy=e.clientY-touchStart.y;
+  touchStart=null;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<25)return;
+  const dir=Math.abs(dx)>Math.abs(dy)?
+    (dx>0?"right":"left"):(dy>0?"down":"up");
+  move(dir);
+});
+wrap.addEventListener("pointercancel",()=>touchStart=null);
+wrap.addEventListener("contextmenu",e=>e.preventDefault());
+
+</script>
+</body>
+</html>
